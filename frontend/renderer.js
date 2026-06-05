@@ -88,7 +88,7 @@ function renderTasks() {
             row.innerHTML = `
                 <td style="padding-left:24px;"><input type="checkbox" class="task-check" data-id="${task.id}"></td>
                 <td class="task-name-cell">
-                  <div class="task-name-text" style="font-weight:600;color:#f8fafc;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${task.file_name}">${task.file_name}</div>
+                  <div class="task-name-text" style="font-weight:600;color:#f8fafc;" title="${task.file_name}">${task.file_name}</div>
                 </td>
                 <td class="task-size-cell" style="color:var(--text-muted);font-size:12px;">${formatBytes(task.total_bytes)}</td>
                 <td class="progress-cell">

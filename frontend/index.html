@@ -49,14 +49,25 @@
         /* Table */
         .history-container { flex: 1; padding: 24px 32px; overflow: hidden; display: flex; flex-direction: column; }
         .table-wrapper { background: rgba(15, 23, 42, 0.3); border: 1px solid var(--border); border-radius: 16px; flex: 1; overflow: auto; }
-        table { width: 100%; border-collapse: collapse; }
+        table { width: 100%; border-collapse: collapse; table-layout: fixed; min-width: 780px; }
         th { position: sticky; top: 0; background: #0f172a; padding: 16px; text-align: left; font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); border-bottom: 1px solid var(--border); z-index: 10; }
-        td { padding: 14px 16px; font-size: 13px; border-bottom: 1px solid var(--border); }
+        td { padding: 14px 16px; font-size: 13px; border-bottom: 1px solid var(--border); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        
+        /* Column Widths */
+        th:nth-child(1) { width: 50px; padding-left: 24px; }
+        th:nth-child(2) { width: auto; min-width: 150px; }
+        th:nth-child(3) { width: 85px; }
+        th:nth-child(4) { width: 130px; }
+        th:nth-child(5) { width: 115px; }
+        th:nth-child(6) { width: 100px; }
+        th:nth-child(7) { width: 80px; }
+        th:nth-child(8) { width: 100px; padding-right: 24px; text-align: right; }
+
         tr:hover { background: var(--row-hover); }
         tr.selected { background: rgba(59, 130, 246, 0.08); }
 
         /* Progress Cell */
-        .progress-cell { width: 200px; }
+        .progress-cell { width: 100%; }
         .progress-bg { height: 6px; background: rgba(255,255,255,0.05); border-radius: 10px; overflow: hidden; margin-bottom: 6px; }
         .progress-fill { height: 100%; background: linear-gradient(to right, var(--primary), var(--accent)); width: 0%; transition: width 0.4s; }
         .progress-info { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted); font-weight: 500; }
@@ -70,11 +81,23 @@
         .badge-failed { background: rgba(239, 68, 68, 0.15); color: #f87171; }
 
         /* Details Panel */
-        .details-panel { height: 180px; background: rgba(15, 23, 42, 0.5); border-top: 1px solid var(--border); padding: 24px 32px; display: flex; gap: 32px; }
-        .preview-box { width: 220px; background: #0f172a; border: 1px solid var(--border); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: var(--text-muted); }
-        .detail-info { flex: 1; }
-        .detail-title { font-family: 'Outfit'; font-size: 18px; font-weight: 600; margin-bottom: 12px; color: white; }
+        .details-panel { 
+            min-height: 180px; 
+            max-height: 300px; 
+            overflow-y: auto; 
+            height: auto; 
+            transition: all 0.3s ease; 
+            background: rgba(15, 23, 42, 0.5); 
+            border-top: 1px solid var(--border); 
+            padding: 24px 32px; 
+            display: flex; 
+            gap: 32px; 
+        }
+        .preview-box { width: 220px; flex-shrink: 0; background: #0f172a; border: 1px solid var(--border); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: var(--text-muted); }
+        .detail-info { flex: 1; min-width: 0; }
+        .detail-title { font-family: 'Outfit'; font-size: 18px; font-weight: 600; margin-bottom: 12px; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .detail-grid { display: grid; grid-template-columns: auto 1fr; gap: 8px 16px; font-size: 12px; color: var(--text-muted); }
+        .detail-value { word-break: break-all; color: #f8fafc; }
 
         /* Modern Large Modal */
         .modal-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(12px); display: none; justify-content: center; align-items: center; z-index: 1000; }
@@ -148,10 +171,10 @@
             <div class="detail-info">
                 <div class="detail-title" id="detail-name">No selection</div>
                 <div class="detail-grid">
-                    <span>Source URL:</span> <span id="detail-url" style="color: white; opacity: 0.8; word-break: break-all;">-</span>
-                    <span>Save Path:</span> <span id="detail-path" style="color: white; opacity: 0.8;">-</span>
-                    <span>Created:</span> <span id="detail-date" style="color: white; opacity: 0.8;">-</span>
-                    <span>File Type:</span> <span id="detail-type" style="color: white; opacity: 0.8;">-</span>
+                    <span>Source URL:</span> <span id="detail-url" class="detail-value">-</span>
+                    <span>Save Path:</span> <span id="detail-path" class="detail-value">-</span>
+                    <span>Created:</span> <span id="detail-date" class="detail-value">-</span>
+                    <span>File Type:</span> <span id="detail-type" class="detail-value">-</span>
                 </div>
             </div>
         </div>
