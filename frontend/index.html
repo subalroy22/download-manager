@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FDM | Fast Download Manager</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            --bg: #0b0f1a;
+            --sidebar-bg: rgba(15, 23, 42, 0.8);
+            --card-bg: #1e293b;
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --accent: #8b5cf6;
+            --text: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: rgba(255, 255, 255, 0.08);
+            --row-hover: rgba(255, 255, 255, 0.03);
+            --danger: #ef4444;
+            --success: #10b981;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        body { background-color: var(--bg); color: var(--text); height: 100vh; display: flex; overflow: hidden; }
+
+        /* Sidebar */
+        .sidebar { width: 260px; background: var(--sidebar-bg); backdrop-filter: blur(20px); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 24px 16px; z-index: 50; }
+        .logo-container { display: flex; align-items: center; gap: 12px; padding: 0 12px; margin-bottom: 40px; }
+        .logo-icon { width: 32px; height: 32px; background: linear-gradient(135deg, var(--primary), var(--accent)); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; box-shadow: 0 8px 16px rgba(59, 130, 246, 0.3); }
+        .logo-text { font-family: 'Outfit', sans-serif; font-size: 22px; font-weight: 700; letter-spacing: -0.5px; background: linear-gradient(to right, #fff, #94a3b8); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+
+        .nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; color: var(--text-muted); text-decoration: none; border-radius: 12px; margin-bottom: 4px; font-size: 14px; font-weight: 500; transition: all 0.2s ease; cursor: pointer; }
+        .nav-item:hover { background: rgba(255, 255, 255, 0.05); color: white; }
+        .nav-item.active { background: rgba(59, 130, 246, 0.1); color: var(--primary); }
+
+        /* Main Content */
+        .main-content { flex: 1; display: flex; flex-direction: column; background: radial-gradient(circle at top right, rgba(59, 130, 246, 0.05), transparent 40%); }
+        .toolbar { height: 80px; padding: 0 32px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); }
+        .toolbar-group { display: flex; align-items: center; gap: 12px; }
+
+        .btn-new { background: linear-gradient(135deg, var(--primary), var(--accent)); color: white; border: none; padding: 10px 20px; border-radius: 10px; font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 8px; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2); }
+        .btn-tool { background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border); color: var(--text-muted); padding: 8px 14px; border-radius: 10px; font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 8px; cursor: pointer; transition: all 0.2s; }
+        .btn-tool:hover { background: rgba(255, 255, 255, 0.1); color: white; }
+
+        /* Table */
+        .history-container { flex: 1; padding: 24px 32px; overflow: hidden; display: flex; flex-direction: column; }
+        .table-wrapper { background: rgba(15, 23, 42, 0.3); border: 1px solid var(--border); border-radius: 16px; flex: 1; overflow: auto; }
+        table { width: 100%; border-collapse: collapse; }
+        th { position: sticky; top: 0; background: #0f172a; padding: 16px; text-align: left; font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); border-bottom: 1px solid var(--border); z-index: 10; }
+        td { padding: 14px 16px; font-size: 13px; border-bottom: 1px solid var(--border); }
+        tr:hover { background: var(--row-hover); }
+        tr.selected { background: rgba(59, 130, 246, 0.08); }
+
+        /* Progress Cell */
+        .progress-cell { width: 200px; }
+        .progress-bg { height: 6px; background: rgba(255,255,255,0.05); border-radius: 10px; overflow: hidden; margin-bottom: 6px; }
+        .progress-fill { height: 100%; background: linear-gradient(to right, var(--primary), var(--accent)); width: 0%; transition: width 0.4s; }
+        .progress-info { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted); font-weight: 500; }
+
+        /* Badges */
+        .badge { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; text-transform: uppercase; }
+        .badge-queued { background: rgba(148, 163, 184, 0.1); color: #94a3b8; }
+        .badge-downloading { background: rgba(59, 130, 246, 0.15); color: #60a5fa; }
+        .badge-completed { background: rgba(16, 185, 129, 0.15); color: #34d399; }
+        .badge-paused { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
+        .badge-failed { background: rgba(239, 68, 68, 0.15); color: #f87171; }
+
+        /* Details Panel */
+        .details-panel { height: 180px; background: rgba(15, 23, 42, 0.5); border-top: 1px solid var(--border); padding: 24px 32px; display: flex; gap: 32px; }
+        .preview-box { width: 220px; background: #0f172a; border: 1px solid var(--border); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: var(--text-muted); }
+        .detail-info { flex: 1; }
+        .detail-title { font-family: 'Outfit'; font-size: 18px; font-weight: 600; margin-bottom: 12px; color: white; }
+        .detail-grid { display: grid; grid-template-columns: auto 1fr; gap: 8px 16px; font-size: 12px; color: var(--text-muted); }
+
+        /* Modern Large Modal */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(12px); display: none; justify-content: center; align-items: center; z-index: 1000; }
+        .modal { background: #1e293b; border: 1px solid var(--border); border-radius: 24px; width: 680px; padding: 0; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); animation: modalIn 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+        @keyframes modalIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        
+        .modal-header { padding: 24px 32px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        .modal-body { padding: 32px; }
+        .modal-footer { padding: 24px 32px; background: rgba(0,0,0,0.1); border-top: 1px solid var(--border); display: flex; gap: 12px; }
+        
+        .detect-card { background: #0f172a; border: 1px solid var(--border); border-radius: 16px; padding: 20px; display: flex; gap: 20px; margin-top: 20px; transition: all 0.3s; }
+        .detect-icon { width: 56px; height: 56px; background: rgba(59, 130, 246, 0.1); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: var(--primary); }
+        .detect-details { flex: 1; min-width: 0; }
+        .detect-name { font-weight: 600; font-size: 15px; color: white; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .detect-meta { font-size: 13px; color: var(--text-muted); display: flex; gap: 12px; }
+
+        input, select { width: 100%; background: #0f172a; border: 1px solid var(--border); padding: 12px 16px; border-radius: 12px; color: white; outline: none; margin-bottom: 8px; }
+        label { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.05em; margin-bottom: 8px; }
+        
+        .spin { animation: spin 1s linear infinite; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    </style>
+</head>
+
+<body>
+    <div class="sidebar">
+        <div class="logo-container">
+            <div class="logo-icon"><i data-lucide="download" style="width: 20px;"></i></div>
+            <div class="logo-text">FDM</div>
+        </div>
+        <div class="nav-item active" data-filter="all"><i data-lucide="layout-grid"></i> All Downloads</div>
+        <div class="nav-item" data-filter="downloading"><i data-lucide="arrow-down-to-line"></i> Downloading</div>
+        <div class="nav-item" data-filter="completed"><i data-lucide="check-circle-2"></i> Completed</div>
+        <div class="nav-item" data-filter="paused"><i data-lucide="pause-circle"></i> Paused</div>
+    </div>
+
+    <div class="main-content">
+        <div class="toolbar">
+            <div class="toolbar-group">
+                <button class="btn-new" id="open-add-modal"><i data-lucide="plus"></i> New Download</button>
+                <div style="width: 1px; height: 24px; background: var(--border); margin: 0 8px;"></div>
+                <button class="btn-tool" id="btn-resume-selected"><i data-lucide="play" style="width: 14px;"></i> Resume</button>
+                <button class="btn-tool" id="btn-pause-selected"><i data-lucide="pause" style="width: 14px;"></i> Pause</button>
+                <button class="btn-tool" id="btn-open-folder"><i data-lucide="folder-open" style="width: 14px;"></i> Open Folder</button>
+            </div>
+            <button class="btn-tool" id="btn-delete-selected" style="color: var(--danger); border-color: rgba(239, 68, 68, 0.2);"><i data-lucide="trash-2" style="width: 14px;"></i> Delete</button>
+        </div>
+
+        <div class="history-container">
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th width="50" style="padding-left: 24px;"><input type="checkbox" id="check-all"></th>
+                            <th>Name</th>
+                            <th>Size</th>
+                            <th>Progress</th>
+                            <th>Status</th>
+                            <th>Speed</th>
+                            <th>ETA</th>
+                            <th style="padding-right: 24px; text-align: right;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-body"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="details-panel" id="details-panel">
+            <div class="preview-box"><i data-lucide="video" style="width: 48px; height: 48px; opacity: 0.2;"></i></div>
+            <div class="detail-info">
+                <div class="detail-title" id="detail-name">No selection</div>
+                <div class="detail-grid">
+                    <span>Source URL:</span> <span id="detail-url" style="color: white; opacity: 0.8; word-break: break-all;">-</span>
+                    <span>Save Path:</span> <span id="detail-path" style="color: white; opacity: 0.8;">-</span>
+                    <span>Created:</span> <span id="detail-date" style="color: white; opacity: 0.8;">-</span>
+                    <span>File Type:</span> <span id="detail-type" style="color: white; opacity: 0.8;">-</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- New Download Modal (FDM-Style) -->
+    <div class="modal-overlay" id="add-modal">
+        <div class="modal" style="border: 1px solid rgba(255,255,255,0.1); background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(24px) saturate(180%);">
+            <div class="modal-header" style="background: rgba(255,255,255,0.02);">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="width: 36px; height: 36px; background: rgba(59, 130, 246, 0.1); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--primary);"><i data-lucide="link-2"></i></div>
+                    <div>
+                        <h3 style="font-family: 'Outfit'; font-size: 18px; line-height: 1.2;">New Download</h3>
+                        <p style="font-size: 11px; color: var(--text-muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em;">Enter URL or Magnet Link</p>
+                    </div>
+                </div>
+                <button class="btn-tool" id="close-add-modal" style="padding: 8px; border-radius: 50%;"><i data-lucide="x" style="width: 18px;"></i></button>
+            </div>
+            <div class="modal-body" style="padding: 32px;">
+                <div style="position: relative; margin-bottom: 24px;">
+                    <label>Source Link</label>
+                    <div style="position: relative;">
+                        <i data-lucide="globe" style="position: absolute; left: 16px; top: 14px; width: 16px; color: var(--text-muted);"></i>
+                        <input id="download-url" type="text" placeholder="https://... or magnet:?" required autocomplete="off" style="padding-left: 44px; margin-bottom: 0; background: rgba(0,0,0,0.2); border-color: rgba(255,255,255,0.05); font-size: 14px;">
+                    </div>
+                </div>
+                
+                <div id="file-info-section" style="display: none; animation: slideIn 0.4s ease-out;">
+                    <div class="detect-card" style="background: rgba(59, 130, 246, 0.03); border: 1px solid rgba(59, 130, 246, 0.1); box-shadow: inset 0 0 20px rgba(59, 130, 246, 0.05);">
+                        <div class="detect-icon" id="detect-icon-box" style="background: var(--primary); color: white; box-shadow: 0 8px 16px rgba(59, 130, 246, 0.2); transition: all 0.3s;">
+                            <i data-lucide="file-text"></i>
+                        </div>
+                        <div class="detect-details">
+                            <div class="detect-name" id="detect-name-text">Analysing...</div>
+                            <div class="detect-meta" style="align-items: center;">
+                                <span id="detect-type-badge" class="badge" style="background: rgba(255,255,255,0.1); color: white;">UNKNOWN</span>
+                                <div style="width: 4px; height: 4px; background: var(--border); border-radius: 50%;"></div>
+                                <span id="detect-size-text" style="font-weight: 500; color: var(--text-muted);">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 24px; display: grid; grid-template-columns: 1.5fr 1fr; gap: 20px;">
+                        <div>
+                            <label>Rename As</label>
+                            <input id="custom-name" type="text" placeholder="Original filename" style="background: rgba(0,0,0,0.2); border-color: rgba(255,255,255,0.05);">
+                        </div>
+                        <div id="quality-section" style="display: none;">
+                            <label>Preferred Quality</label>
+                            <select id="format-select" style="background: rgba(0,0,0,0.2); border-color: rgba(255,255,255,0.05); cursor: pointer;"></select>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="margin-top: 24px;">
+                    <label>Storage Location</label>
+                    <div style="display: flex; gap: 12px; align-items: center;">
+                        <div style="flex: 1; position: relative;">
+                            <i data-lucide="folder" style="position: absolute; left: 16px; top: 14px; width: 16px; color: var(--text-muted);"></i>
+                            <input id="save-path" type="text" placeholder="Default Downloads folder" readonly style="padding-left: 44px; margin-bottom: 0; background: rgba(0,0,0,0.1); border-color: rgba(255,255,255,0.05); cursor: default;">
+                        </div>
+                        <button type="button" class="btn-tool" id="btn-browse" style="padding: 12px 20px; height: 46px; border-radius: 12px; background: rgba(255,255,255,0.05);"><i data-lucide="folder-search" style="width: 16px;"></i> Browse</button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" style="background: rgba(0,0,0,0.2); padding: 24px 32px; border-top: 1px solid rgba(255,255,255,0.05);">
+                <button type="button" class="btn-tool" id="btn-cancel-add" style="border: none; background: transparent; padding: 10px 24px;">Cancel</button>
+                <div style="flex: 1;"></div>
+                <button type="button" class="btn-new" id="btn-start-download" style="padding: 12px 32px; min-width: 180px; justify-content: center;" disabled>
+                    <i data-lucide="arrow-down-to-line"></i> Start Download
+                </button>
+            </div>
+        </div>
+    </div>
+    <style>
+        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .detect-card { transition: transform 0.2s; }
+        .detect-card:hover { transform: translateY(-2px); }
+    </style>
+
+    <!-- Custom Confirm Delete Modal -->
+    <div class="modal-overlay" id="confirm-modal-overlay">
+        <div class="modal" style="width: 400px; text-align: center; padding: 40px;">
+            <div style="width: 64px; height: 64px; background: rgba(239, 68, 68, 0.1); color: var(--danger); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 24px;"><i data-lucide="alert-triangle" style="width: 32px; height: 32px;"></i></div>
+            <h3 class="detail-title" id="confirm-title" style="margin-bottom: 8px;">Delete Task?</h3>
+            <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 32px;" id="confirm-text">-</p>
+            <div style="display: flex; gap: 12px;">
+                <button class="btn-tool" id="confirm-cancel" style="flex: 1; justify-content: center;">Cancel</button>
+                <button class="btn-new" id="confirm-proceed" style="flex: 1; justify-content: center; background: var(--danger);">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="renderer.js"></script>
+    <script>lucide.createIcons();</script>
+</body>
+</html>

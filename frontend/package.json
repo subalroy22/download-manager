@@ -1,0 +1,13 @@
+{
+  "name": "download-manager-electron",
+  "version": "0.1.0",
+  "private": true,
+  "main": "main.js",
+  "scripts": {
+    "start": "electron . --no-sandbox"
+
+  },
+  "devDependencies": {
+    "electron": "^26.0.0"
+  }
+}
