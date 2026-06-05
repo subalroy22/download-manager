@@ -101,14 +101,33 @@ impl DownloadManager {
         Ok(())
     }
 
-    pub async fn start_download(&self, url: String, save_path: Option<String>, format_id: Option<String>) -> anyhow::Result<DownloadTask> {
+    pub async fn start_download(&self, url: String, save_path: Option<String>, format_id: Option<String>, custom_name: Option<String>) -> anyhow::Result<DownloadTask> {
         let id = Uuid::new_v4().to_string();
-        let file_name = extract_file_name(&url).unwrap_or_else(|| format!("download-{}", id));
         let actual_save_path = save_path.unwrap_or_else(|| {
             std::env::var("HOME")
                 .map(|p| format!("{}/Downloads", p))
                 .unwrap_or_else(|_| "downloads".to_string())
         });
+
+        let mut file_name = if let Some(name) = custom_name {
+            if name.trim().is_empty() { extract_file_name(&url).unwrap_or_else(|| format!("download-{}", id)) } else { name.trim().to_string() }
+        } else {
+            extract_file_name(&url).unwrap_or_else(|| format!("download-{}", id))
+        };
+
+        // Check for duplicates on disk and auto-rename if needed
+        let mut file_path = std::path::Path::new(&actual_save_path).join(&file_name);
+        if file_path.exists() {
+            let stem = file_path.file_stem().and_then(|s| s.to_str()).unwrap_or("file").to_string();
+            let ext = file_path.extension().and_then(|e| e.to_str()).unwrap_or("").to_string();
+            let mut counter = 1;
+            while file_path.exists() {
+                let new_name = if ext.is_empty() { format!("{} ({})", stem, counter) } else { format!("{} ({}).{}", stem, counter, ext) };
+                file_path = std::path::Path::new(&actual_save_path).join(&new_name);
+                file_name = new_name;
+                counter += 1;
+            }
+        }
 
 
         let task_data = DownloadTask {
@@ -190,6 +209,10 @@ impl DownloadManager {
 fn extract_file_name(url: &str) -> Option<String> {
     if url.starts_with("magnet:") {
         return Some("Magnet_Download".to_string());
+    }
+    let lower = url.to_lowercase();
+    if lower.contains("youtube.com/watch") || lower.contains("youtu.be/") {
+        return Some("YouTube Video".to_string());
     }
     let path_no_query = url.split('?').next().unwrap_or(url);
     path_no_query.rsplit('/')

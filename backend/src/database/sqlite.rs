@@ -139,7 +139,7 @@ pub async fn fetch_history(path: &str) -> Result<Vec<DownloadTask>> {
     let tasks = tokio::task::spawn_blocking(move || -> Result<Vec<DownloadTask>> {
         let conn = Connection::open(path)?;
         let mut statement = conn.prepare(
-            "SELECT id, url, file_name, save_path, downloaded_bytes, total_bytes, status, created_at, format_id
+            "SELECT id, url, file_name, save_path, downloaded_bytes, total_bytes, status, created_at, format_id, error_message
              FROM downloads
              ORDER BY created_at DESC",
         )?;

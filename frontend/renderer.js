@@ -73,9 +73,11 @@ function renderTasks() {
     });
 
     filtered.forEach(task => {
-        const progress = task.total_bytes > 0 ? Math.round((task.downloaded_bytes / task.total_bytes) * 100) : 0;
-        const isDownloading = task.status === 'downloading';
         const isCompleted = task.status === 'completed';
+        const progress = task.total_bytes > 0 
+            ? Math.round((task.downloaded_bytes / task.total_bytes) * 100) 
+            : (isCompleted ? 100 : 0);
+        const isDownloading = task.status === 'downloading';
         const isSelected = selectedTaskIds.has(task.id);
 
         let row = historyBody.querySelector(`tr[data-id="${task.id}"]`);
@@ -138,10 +140,10 @@ function renderTasks() {
         row.querySelector('.task-check').checked = isSelected;
         row.querySelector('.task-name-text').textContent = task.file_name;
         row.querySelector('.task-name-text').title = task.file_name;
-        row.querySelector('.task-size-cell').textContent = formatBytes(task.total_bytes);
+        row.querySelector('.task-size-cell').textContent = (task.total_bytes > 0) ? formatBytes(task.total_bytes) : (isCompleted ? 'Unknown' : '0 Bytes');
         row.querySelector('.progress-fill').style.width = `${Math.min(progress, 100)}%`;
         row.querySelector('.pct').textContent = `${progress}%`;
-        row.querySelector('.dl-bytes').textContent = formatBytes(task.downloaded_bytes);
+        row.querySelector('.dl-bytes').textContent = isCompleted ? 'Completed' : formatBytes(task.downloaded_bytes);
 
         const badge = row.querySelector('.badge');
         const badgeLabel = task.status === 'failed' ? '⚠ FAILED' : task.status;
@@ -284,6 +286,8 @@ function openAddModal() {
     fileInfoSection.style.display = 'none';
     qualitySection.style.display = 'none';
     btnStartDownload.disabled = true;
+    btnStartDownload.innerHTML = '<i data-lucide="arrow-down-to-line"></i> Start Download';
+    lucide.createIcons({ parent: btnStartDownload });
     currentInspectType = null;
     urlInput.focus();
 }
@@ -338,7 +342,8 @@ async function inspectLink(url) {
         detectNameText.textContent = data.title || data.filename || url.split('/').pop().split('?')[0] || 'Unknown';
         detectTypeBadge.textContent = LABEL_MAP[type] || type.toUpperCase();
         detectTypeBadge.className = `badge ${BADGE_MAP[type] || 'badge-queued'}`;
-        detectSizeText.textContent = data.filesize ? formatBytes(data.filesize) : (type === 'torrent' ? 'Connecting to peers...' : 'Size unknown');
+        const finalSize = data.filesize || data.filesize_approx;
+        detectSizeText.textContent = finalSize ? formatBytes(finalSize) : (type === 'torrent' ? 'Connecting to peers...' : 'Size unknown');
         detectIconBox.innerHTML = `<i data-lucide="${ICON_MAP[type]}" style="width:24px;height:24px;"></i>`;
         lucide.createIcons({ parent: detectIconBox });
 
@@ -351,7 +356,8 @@ async function inspectLink(url) {
                 const opt = document.createElement('option');
                 opt.value = f.format_id;
                 const res = f.height ? `${f.height}p` : 'Unknown';
-                const size = f.filesize ? ` (~${formatBytes(f.filesize)})` : '';
+                const fSize = f.filesize || f.filesize_approx;
+                const size = fSize ? ` (~${formatBytes(fSize)})` : '';
                 opt.textContent = `${f.ext?.toUpperCase() || 'MP4'} – ${res}${size}`;
                 formatSelect.appendChild(opt);
             });
@@ -379,7 +385,13 @@ let inspectTimer = null;
 urlInput.addEventListener('input', () => {
     clearTimeout(inspectTimer);
     const val = urlInput.value.trim();
-    if (!val) { fileInfoSection.style.display = 'none'; btnStartDownload.disabled = true; return; }
+    if (!val) { 
+        fileInfoSection.style.display = 'none'; 
+        btnStartDownload.disabled = true; 
+        btnStartDownload.innerHTML = '<i data-lucide="arrow-down-to-line"></i> Start Download';
+        lucide.createIcons({ parent: btnStartDownload });
+        return; 
+    }
     inspectTimer = setTimeout(() => inspectLink(val), 600);
 });
 urlInput.addEventListener('paste', () => {
@@ -393,6 +405,7 @@ btnStartDownload.onclick = async () => {
     const url = urlInput.value.trim();
     if (!url) return;
     const save_path = savePathInput.value.trim() || null;
+    const file_name = customNameInput.value.trim() || null;
     const format_id = (currentInspectType === 'video' && formatSelect.value) ? formatSelect.value :
                       (currentInspectType === 'torrent' ? 'torrent' : null);
 
@@ -403,7 +416,7 @@ btnStartDownload.onclick = async () => {
         const res = await fetch(`${apiBase}/download`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ url, save_path, format_id })
+            body: JSON.stringify({ url, save_path, format_id, file_name })
         });
         if (res.ok) {
             closeAddModal();

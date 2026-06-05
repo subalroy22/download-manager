@@ -57,17 +57,61 @@ async fn download_via_ytdlp(
 ) -> Result<()> {
     let fmt = format_id.unwrap_or_else(|| "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best".to_string());
     
-    // Get the output filename first so we can show it
-    let name_out = Command::new("yt-dlp")
-        .args(["-f", &fmt, "--get-filename", "-o", "%(title)s.%(ext)s", &url])
+    // Get the output metadata first so we can show name and size reliably
+    let info_out = Command::new("yt-dlp")
+        .args(["-f", &fmt, "-j", "--no-playlist", &url])
         .output().await?;
 
-    if name_out.status.success() {
-        let fname = String::from_utf8_lossy(&name_out.stdout).trim().to_string();
-        if !fname.is_empty() {
+    if info_out.status.success() {
+        if let Ok(data) = serde_json::from_slice::<serde_json::Value>(&info_out.stdout) {
             let mut g = task.lock().await;
-            g.file_name = fname;
-            let _ = database::update_task_progress(&db_path, &task_id, &g.file_name, 0, 0, &g.status).await;
+            
+            let is_generic = g.file_name == "YouTube Video" || g.file_name == "watch" || g.file_name.starts_with("download-");
+
+            // Priority: title.ext from yt-dlp's predicted filename
+            let mut final_name = if let Some(fname) = data["_filename"].as_str() {
+                 let path = std::path::Path::new(fname);
+                 path.file_name().and_then(|n| n.to_str()).unwrap_or(&g.file_name).to_string()
+            } else if let Some(title) = data["title"].as_str() {
+                let ext = data["ext"].as_str().unwrap_or("mp4");
+                format!("{}.{}", title, ext)
+            } else {
+                g.file_name.clone()
+            };
+
+            // If user provided a custom name, WE SHOULD KEEP IT but ensure extension is correct if it was lost
+            if !is_generic {
+                let current_ext = std::path::Path::new(&g.file_name).extension().and_then(|e| e.to_str()).unwrap_or("");
+                if current_ext.is_empty() {
+                    let real_ext = data["ext"].as_str().unwrap_or("mp4");
+                    final_name = format!("{}.{}", g.file_name, real_ext);
+                } else {
+                    final_name = g.file_name.clone();
+                }
+            }
+
+            // --- DE-DUPLICATION ---
+            let mut file_path = std::path::Path::new(&save_dir).join(&final_name);
+            if file_path.exists() {
+                let stem = file_path.file_stem().and_then(|s| s.to_str()).unwrap_or("file").to_string();
+                let ext = file_path.extension().and_then(|e| e.to_str()).unwrap_or("").to_string();
+                let mut counter = 1;
+                while file_path.exists() {
+                    final_name = if ext.is_empty() { format!("{} ({})", stem, counter) } else { format!("{} ({}).{}", stem, counter, ext) };
+                    file_path = std::path::Path::new(&save_dir).join(&final_name);
+                    counter += 1;
+                }
+            }
+
+            g.file_name = final_name;
+            
+            // Get filesize or approximate filesize
+            if let Some(size) = data["filesize"].as_u64()
+                .or_else(|| data["filesize_approx"].as_u64()) {
+                g.total_bytes = size;
+            }
+            
+            let _ = database::update_task_progress(&db_path, &task_id, &g.file_name, g.downloaded_bytes, g.total_bytes, &g.status).await;
         }
     }
 
@@ -77,7 +121,7 @@ async fn download_via_ytdlp(
     let mut child = Command::new("yt-dlp")
         .args([
             "-f", &fmt,
-            "--output", &format!("{}/%(title)s.%(ext)s", save_dir),
+            "--output", &format!("{}/{}", save_dir, file_name),
             "--newline",         // progress on each line for parsing
             "--no-playlist",
             &url,
@@ -89,7 +133,7 @@ async fn download_via_ytdlp(
     {
         let mut g = task.lock().await;
         g.status = DownloadStatus::Downloading;
-        let _ = database::update_task_progress(&db_path, &task_id, &g.file_name, 0, 0, &g.status).await;
+        let _ = database::update_task_progress(&db_path, &task_id, &g.file_name, g.downloaded_bytes, g.total_bytes, &g.status).await;
     }
 
     // Wait for the child process, checking for pause periodically
@@ -100,6 +144,15 @@ async fn download_via_ytdlp(
                 if status.success() {
                     let mut g = task.lock().await;
                     g.status = DownloadStatus::Completed;
+                    
+                    // Fallback: If total_bytes is still 0, check the file on disk
+                    if g.total_bytes == 0 {
+                        let path = format!("{}/{}", save_dir, g.file_name);
+                        if let Ok(metadata) = std::fs::metadata(&path) {
+                            g.total_bytes = metadata.len();
+                        }
+                    }
+                    
                     g.downloaded_bytes = g.total_bytes;
                     g.speed = 0;
                     let _ = database::update_task_progress(&db_path, &task_id, &g.file_name, g.total_bytes, g.total_bytes, &g.status).await;
@@ -122,7 +175,8 @@ async fn download_via_ytdlp(
                 }
                 if last_db.elapsed() > Duration::from_secs(2) {
                     // Update a heartbeat progress so UI doesn't freeze
-                    let _ = database::update_task_progress(&db_path, &task_id, &file_name, 0, 0, &g.status).await;
+                    // Use actual stored bytes instead of resetting to 0
+                    let _ = database::update_task_progress(&db_path, &task_id, &g.file_name, g.downloaded_bytes, g.total_bytes, &g.status).await;
                     last_db = Instant::now();
                 }
                 drop(g);

@@ -21,6 +21,7 @@ pub struct DownloadRequest {
     pub url: String,
     pub save_path: Option<String>,
     pub format_id: Option<String>,
+    pub file_name: Option<String>,
 }
 
 pub fn create_router(manager: DownloadManager) -> Router {
@@ -52,7 +53,7 @@ async fn start_download(
             .into_response();
     }
 
-    match state.manager.start_download(payload.url, payload.save_path, payload.format_id).await {
+    match state.manager.start_download(payload.url, payload.save_path, payload.format_id, payload.file_name).await {
         Ok(task) => (StatusCode::CREATED, Json(task)).into_response(),
         Err(error) => (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -91,10 +92,10 @@ async fn inspect_video(
             "formats": []
         }))).into_response();
     }
-
+    
     // 3. Try yt-dlp (covers YouTube, etc.)
     let output = tokio::process::Command::new("yt-dlp")
-        .args(["-j", url])
+        .args(["-j", "--no-playlist", url])
         .output()
         .await;
 
@@ -111,10 +112,11 @@ async fn inspect_video(
     match client.head(url).send().await {
         Ok(res) => {
             let size = res.content_length().unwrap_or(0);
-            let name = url.split('?').next().unwrap_or(url).split('/').last().unwrap_or("file");
+            let raw_name = url.split('?').next().unwrap_or(url).split('/').last().unwrap_or("file");
+            let title = if raw_name == "watch" { "YouTube Video" } else { raw_name };
             (StatusCode::OK, Json(json!({
                 "type": "file",
-                "title": name,
+                "title": title,
                 "filesize": size,
                 "formats": []
             }))).into_response()
